@@ -13,23 +13,31 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def create
     @user = User.new(sign_up_params)
     unless @user.valid?
-      render :new and return
+      render :new and return # renderの2回処理を防ぐため一つ目のところで条件式がfalseの時にメソッドを強制終了させる
     end
-    session["devise.regist_data"] = {user: @user.attributes}
+    session["devise.regist_data"] = {user: @user.attributes} #インスタンスメソッドから取得できる値をオブジェクト型からハッシュ型に変換
+
+    # coockieの使用上としてネスト2段目以降はシンボル型の指定ができなくなる
     session["devise.regist_data"][:user]["password"] = params[:user][:password]
-    @address = @user.build_address
-    render :new_address
+    @address = @user.build_address # @userに紐づくインスタンス変数を生成
+
+    render :new_address # @addressを定義してから次のアクションのビューへ遷移する
   end
 
   def create_address
     @user = User.new(session["devise.regist_data"]["user"])
     @address = Address.new(address_params)
     unless @address.valid?
-      render :new_address and return
+      render :new_address and return #こちらも2回処理を防ぐためにreturnを使って強制終了させる
     end
     @user.build_address(@address.attributes)
     @user.save
+    # セッションとはデータを一時的に記憶するためのもの。
+    # 登録したセッションのデータは不要なので削除する必要がある。
     session["devise.regist_data"]["user"].clear
+    # ここまでは新規登録は完了
+
+    # ログインがまだできていないので、sign_inメソッドを使ってログインする。
     sign_in(:user,@user)
   end
 
